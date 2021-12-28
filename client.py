@@ -28,30 +28,34 @@ class client:
         try:
             b_s = socket(AF_INET, SOCK_DGRAM)
         except:
-            print("error - could not listen to broadcast port: " + str(self.broadcast_port))
+            print(f"{bcolors.FAIL}error - could not listen to broadcast port: {str(self.broadcast_port)}{bcolors.ENDC}")
         else:
             with b_s:
+                print(f"{bcolors.OKGREEN}client currently listening to port: {str(self.broadcast_port)}{bcolors.ENDC}")
                 b_s.setsockopt(SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 while True:
                     b_s.bind(('', self.broadcast_port))
                     pkt, addr = b_s.recv(self.max_len)
                     if len(pkt) == self.packet_len:
                         try:
+                            print(f"{bcolors.OKGREEN}client received a packet from ip: {str(addr[0])}{bcolors.ENDC}")
                             msg = struct.unpack("IBH", pkt)
                         except:
-                            print("error - could not unpack a server offer")
+                            print(f"{bcolors.FAIL}error - could not unpack a server offer{bcolors.ENDC}")
                         else:
                             if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
+                                print(f"{bcolors.OKGREEN}client received a good offer{bcolors.ENDC}")
                                 self.tcp_port = msg[2]
                                 self.server_ip = addr[0]
                                 return
+                            print(f"{bcolors.OKGREEN}client received a bad offer, keep listening {bcolors.ENDC}")
 
     def open_TCP(self):
         while True:
             try:
                 c_s = socket(AF_INET, SOCK_STREAM)
             except:
-                print("error - could not creat tcp socket with server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                print(f"{bcolors.FAIL}error - could not creat tcp socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)} {bcolors.ENDC}")
             else:
                 with c_s:
                     conn_flag = False
@@ -59,44 +63,43 @@ class client:
                         try:
                             c_s.connect((self.server_ip, self.tcp_port))
                         except:
-                            print("error - could not connect socket with server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                            print(f"{bcolors.FAIL}error - could not connect socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                             # shutdown the connection for read \ write
                             c_s.shutdown(SHUT_RDWR)
                         else:
+                            print(f"{bcolors.OKGREEN}client and server are connected via TCP socket{bcolors.ENDC}")
                             encoded_name = str.encode(self.client_name + "\n")
                             while True:
                                 try:
                                     c_s.send(encoded_name)
                                 except:
-                                    print("error - could not send client-name to server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                    print(f"{bcolors.FAIL}error - could not send client-name to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                 else:
+                                    print(f"{bcolors.OKGREEN}client sent his name to the server{bcolors.ENDC}")
                                     try:
                                         question_from_server = c_s.recv(self.max_len)
                                     except:
-                                        print("error - could not receive question from server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                        print(f"{bcolors.FAIL}error - could not receive question from server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                     else:
-                                        print(question_from_server.decode()+"\n")
+                                        print(f"{bcolors.OKCYAN} received question: {question_from_server.decode()}{bcolors.ENDC}")
                                         while True:
-                                            # need to add getSol function
-                                            self.client_sol = self.getSol()
+                                            self.client_sol = input(f"{bcolors.OKBLUE}please provide your answer - QUICK! {bcolors.ENDC}")
                                             encoded_sol = str.encode(self.client_sol)
                                             try:
                                                 c_s.send(encoded_sol)
                                             except:
-                                                print("error - could not send solution to server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                                print(f"{bcolors.FAIL}error - could not send solution to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                             else:
+                                                print(f"{bcolors.OKGREEN}client sent his solution to the server{bcolors.ENDC}")
                                                 try:
                                                     server_response = c_s.recv(self.max_len)
                                                 except:
-                                                    print(bcolors.WARNING+"error - could not receive the last message from the server: " + str(self.server_ip) + " in port: " + str(self.tcp_port) + bcolors.ENDC)
+                                                    print(f"{bcolors.FAIL}error - could not receive the last message from the server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                                 else:
-                                                    print(server_response.decode()+"\n")
+                                                    print(f"{bcolors.OKCYAN} received solution from the server: {server_response.decode()}{bcolors.ENDC}")
+                                                    return
 
 
-
-    def getSol(self):
-        # to be continue
-        return "100"
 
 class bcolors:
     HEADER = '\033[95m'
@@ -110,6 +113,6 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 if __name__ == '__main__':
-    name = input(f"{bcolors.OKBLUE}Please enter name:{bcolors.ENDC}")
+    name = input(f"{bcolors.OKBLUE}Please enter name: {bcolors.ENDC}")
     c = client(name)
     c.begin_game()
