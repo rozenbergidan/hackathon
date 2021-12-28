@@ -1,4 +1,5 @@
 import threading
+from threading import Thread
 import time
 from socket import *
 import struct
@@ -18,6 +19,7 @@ class server:
         self.thread_cnt=0
         self.threads=[]
         self.threads_name = {}
+        self.winner = ""
 
     def send_broadcast_offers(self):
         try:
@@ -46,7 +48,7 @@ class server:
                 print("error")
             else:
                 print(f"Connected to client ip: {str(address[0])} in port: {str(address[1])}")
-                a_thread = threading.(self.accept_client, (c_s,))
+                a_thread = Thread(target=self.accept_client, args=(c_s, address))
                 self.thread_cnt += 1
                 # if self.thread_cnt <= 2: maybe not needed because of listen(2)
                 print(f"Thread Number: {str(self.thread_cnt)}")
@@ -56,11 +58,47 @@ class server:
 
     def accept_client(self, conn):
         msg = conn.recv(self.buff)
-        self.threads_name[self] = msg.decode()
+        self.threads_name[threading.get_ident()] = msg.decode()
 
         while len(self.threads_name) != 2:
             time.sleep(1)
-        conn.send()
+
+        msg = f"Welcome to our game \n player 1: {self.threads_name.keys()[0]} \n player 1: {self.threads_name.keys()[1]} \n the question is: {self.question.keys()[0]}"
+        try:
+            conn.sendto(str.encode(msg))
+        except:
+            print("err")
+        else:
+            end_time = time.time() + 10
+            while time.time() < end_time:
+                try:
+                    msg = conn.recv(self.buff)
+                except:
+                    print("err")
+                else:
+                    msg = msg.decode()
+                    msg = int(msg)
+                    if msg == self.question.values()[0]:
+                        print(f"the server received {msg} from player {self.threads_name[threading.get_ident()]}")
+                        if self.winner == "":
+                            self.winner = self.threads_name[threading.get_ident()]
+                        break
+                    else:
+                        if self.winner == "":
+                            if self.threads_name[threading.get_ident()] == self.threads_name.values()[0]:
+                                self.winner = self.threads_name[1]
+                            else:
+                                self.winner = self.threads_name[0]
+                        break
+
+            if self.winner != "":
+                msg = f"the winner is {self.winner}"
+            else:
+                msg = f"no winner"
+            msg = str.encode(msg)
+            conn.sendto(msg)
+            return
+
 
 
 
