@@ -25,48 +25,78 @@ class client:
                 pass
 
     def get_TCP_socket(self):
-        with socket(AF_INET, SOCK_DGRAM) as b_s:
-            b_s.setsockopt(SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        while True:
-            b_s.bind(('', self.broadcast_port))
-            pkt, addr = b_s.recv(self.max_len)
-            if len(pkt) == self.packet_len:
-                with struct.unpack("IBH", pkt) as msg:
-                    if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
-                        self.tcp_port = msg[2]
-                        self.server_ip = addr[0]
-                        return
+        try:
+            b_s = socket(AF_INET, SOCK_DGRAM)
+        except:
+            print("error - could not listen to broadcast port: " + str(self.broadcast_port))
+        else:
+            with b_s:
+                b_s.setsockopt(SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                while True:
+                    b_s.bind(('', self.broadcast_port))
+                    pkt, addr = b_s.recv(self.max_len)
+                    if len(pkt) == self.packet_len:
+                        try:
+                            msg = struct.unpack("IBH", pkt)
+                        except:
+                            print("error - could not unpack a server offer")
+                        else:
+                            if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
+                                self.tcp_port = msg[2]
+                                self.server_ip = addr[0]
+                                return
 
     def open_TCP(self):
         while True:
-            with socket(AF_INET, SOCK_STREAM) as c_s:
-                conn_flag = False
-                while not conn_flag:
-                    with c_s.connect((self.server_ip, self.tcp_port)):
-                        encoded_name = str.encode(self.client_name + "\n")
-                        while True:
-                            with c_s.send(encoded_name):
-                                with c_s.recv(self.max_len) as msg_from_server:
-                                    print(msg_from_server.decode()+"\n")
-                                    while True:
-                                        self.client_sol = self.getSol() #need to add getSol function
-                                        encoded_sol = str.encode(self.client_sol)
-                                        with c_s.send(encoded_sol):
-                                            with c_s.recv(self.max_len) as server_response:
-                                                print(server_response.decode()+"\n")
+            try:
+                c_s = socket(AF_INET, SOCK_STREAM)
+            except:
+                print("error - could not creat tcp socket with server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+            else:
+                with c_s:
+                    conn_flag = False
+                    while not conn_flag:
+                        try:
+                            c_s.connect((self.server_ip, self.tcp_port))
+                        except:
+                            print("error - could not connect socket with server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                            # shutdown the connection for read \ write
+                            c_s.shutdown(SHUT_RDWR)
+                        else:
+                            encoded_name = str.encode(self.client_name + "\n")
+                            while True:
+                                try:
+                                    c_s.send(encoded_name)
+                                except:
+                                    print("error - could not send client-name to server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                else:
+                                    try:
+                                        question_from_server = c_s.recv(self.max_len)
+                                    except:
+                                        print("error - could not receive question from server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                    else:
+                                        print(question_from_server.decode()+"\n")
+                                        while True:
+                                            # need to add getSol function
+                                            self.client_sol = self.getSol()
+                                            encoded_sol = str.encode(self.client_sol)
+                                            try:
+                                                c_s.send(encoded_sol)
+                                            except:
+                                                print("error - could not send solution to server: " + str(self.server_ip) + " in port: " + str(self.tcp_port))
+                                            else:
+                                                try:
+                                                    server_response = c_s.recv(self.max_len)
+                                                except:
+                                                    print(bcolors.WARNING+"error - could not receive the last message from the server: " + str(self.server_ip) + " in port: " + str(self.tcp_port) + bcolors.ENDC)
+                                                else:
+                                                    print(server_response.decode()+"\n")
+
+
 
     def getSol(self):
         # to be continue
         return "100"
-
-if __name__ == '__main__':
-    name=input("Please enter name: ")
-    c = client(name)
-    c.begin_game()
-
-
-
-
 
 class bcolors:
     HEADER = '\033[95m'
@@ -78,3 +108,8 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+if __name__ == '__main__':
+    name = input(f"{bcolors.OKBLUE}Please enter name:{bcolors.ENDC}")
+    c = client(name)
+    c.begin_game()
