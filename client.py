@@ -20,7 +20,8 @@ class client:
             try:
                 self.get_TCP_socket()
                 self.open_TCP()
-            except:
+            except Exception as e:
+                print(str(e))
                 time.sleep(1)
                 pass
 
@@ -35,11 +36,11 @@ class client:
                 b_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 while True:
                     b_s.bind(('', self.broadcast_port))
-                    pkt, address = b_s.recvfrom(self.max_len)
+                    pkt, address = b_s.recv(self.max_len)
                     if len(pkt) == self.packet_len:
                         try:
                             print(f"{bcolors.OKGREEN}client received a packet from ip: {str(address[0])}{bcolors.ENDC}")
-                            msg = struct.unpack("IBH", pkt)
+                            msg = struct.unpack("Ibh", pkt)
                         except:
                             print(f"{bcolors.FAIL}error - could not unpack a server offer{bcolors.ENDC}")
                             time.sleep(1)

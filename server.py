@@ -10,7 +10,7 @@ class server:
 
     def __init__(self):
         self.host_ip = '127.0.0.1'
-        self.game_port = 3001
+        self.game_port = 2000
         self.broadcast_port = 13117
         self.question = {"2 + 2": 4,
                          "10 - 6*2 + 4": 2,
@@ -29,23 +29,23 @@ class server:
             print("error - could not create udp socket")
         else:
             with s_s:
+                s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
                 s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 for i in range(10):
                     print(f"server sending offers for {i + 1} sec")
-                    offer = struct.pack("IBH", 0xabcddcba, 0x2, self.game_port)
+                    offer = struct.pack("Ibh", 0xabcddcba, 0x2, self.game_port)
                     s_s.sendto(offer, ('<broadcast>', self.broadcast_port))
                     time.sleep(1)
-                print(f"server started, listening on IP address {self.host_ip}")
 
     def listen_to_clients(self):
+        print(f"server started, listening on IP address {self.host_ip}")
         s_s = socket(AF_INET, SOCK_STREAM)
         s_s.setblocking(True)
         s_s.bind(('', self.game_port))
-        s_s.listen(2)
+        s_s.listen()
         while True:
             try:
                 c_s, address = s_s.accept()
-                print("hello there")
             except:
                 print("error")
             else:
@@ -106,7 +106,8 @@ class server:
                 self.send_broadcast_offers()
                 self.listen_to_clients()
                 self.clear()
-            except:
+            except Exception as e:
+                print(str(e))
                 time.sleep(1)
                 pass
 
@@ -115,7 +116,6 @@ class server:
         self.threads_name = {}
         self.threads = []
         self.thread_cnt = 0
-
 
 
 if __name__ == '__main__':
