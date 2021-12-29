@@ -1,131 +1,113 @@
 import threading
-from threading import Thread
+from select import select
+
+# import scapy
 import time
 from socket import *
 import struct
 
 
-
 class server:
+
     def __init__(self):
-        self.dev = "eth1"
-        self.test = "eth2"
-        # self.host_ip = scapy.get_if_addr(self.dev)
-        self.host_ip = "132.73.199.2"
-        self.game_port = 2000
         self.broadcast_port = 13117
-        self.question = {"2 + 2": 4,
-                         "10 - 6*2 + 4": 2,
-                         "10*100/100 + 1 - 7": 4
-                         }
+        # self.server_ip = "132.73.199.2"
+        # self.server_ip_test = scapy.get_if_addr("eth2")
+        # self.server_ip_dev = scapy.get_if_addr("eth1")
+        self.server_port = 2070
         self.buff = 1024
-        self.thread_cnt = 0
-        self.threads = []
-        self.threads_name = {}
-        self.winner = ""
+        self.questions = ["2+4 = ?"]
+        self.answers = [6]
+            # {"2 + 2": 4,
+            #               "10 - 6*2 + 4": 2,
+            #               "10*100/100 + 1 - 7": 4
+            #               }
+        self.connected = 0
+        self.thread1_name = ""
+        self.thread2_name = ""
 
-    def send_broadcast_offers(self):
-        try:
-            s_s = socket(AF_INET, SOCK_DGRAM)
-        except:
-            print("error - could not create udp socket")
-        s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        for i in range(10):
-            print(f"server sending offers for {i + 1} sec")
-            offer = struct.pack("Ibh", 0xabcddcba, 0x2, self.game_port)
-            # print(f"server sending to port {self.broadcast_port}")
-            s_s.sendto(offer, ('255.255.255.255', self.broadcast_port))
-            time.sleep(1)
-
-    def listen_to_clients(self):
-        print(f"server started, listening on IP address {self.host_ip}")
-        s_s = socket(AF_INET, SOCK_STREAM)
-        s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s_s.bind((self.host_ip, self.game_port))
-        s_s.listen(2)
+    def run(self):
         while True:
             try:
-                c_s, address = s_s.accept()
-                print("catch")
-            except:
-                print("error")
-            else:
-                print(f"Connected to client ip: {str(address[0])} in port: {str(address[1])}")
-                a_thread = Thread(target=self.accept_client, args=(c_s, address))
-                self.thread_cnt += 1
-                # if self.thread_cnt <= 2: maybe not needed because of listen(2)
-                print(f"Thread Number: {str(self.thread_cnt)}")
-                self.threads.append(a_thread)
-                a_thread.start()
-
-    def accept_client(self, conn):
-        msg = conn.recv(self.buff)
-        self.threads_name[threading.get_ident()] = msg.decode()
-
-        while len(self.threads_name) != 2:
-            time.sleep(1)
-
-        msg = f"Welcome to our game \n player 1: {self.threads_name.keys()[0]} \n player 1: {self.threads_name.keys()[1]} \n the question is: {self.question.keys()[0]}"
-        try:
-            conn.sendto(str.encode(msg))
-        except:
-            print("err")
-        else:
-            end_time = time.time() + 10
-            while time.time() < end_time:
-                try:
-                    msg = conn.recv(self.buff)
-                except:
-                    print("err")
-                else:
-                    msg = msg.decode()
-                    msg = int(msg)
-                    if msg == self.question.values()[0]:
-                        print(f"the server received {msg} from player {self.threads_name[threading.get_ident()]}")
-                        if self.winner == "":
-                            self.winner = self.threads_name[threading.get_ident()]
-                        break
-                    else:
-                        if self.winner == "":
-                            if self.threads_name[threading.get_ident()] == self.threads_name.values()[0]:
-                                self.winner = self.threads_name[1]
-                            else:
-                                self.winner = self.threads_name[0]
-                        break
-
-            if self.winner != "":
-                msg = f"the winner is {self.winner}"
-            else:
-                msg = f"no winner"
-            msg = str.encode(msg)
-            conn.sendto(msg)
-            return
-
-    def start(self):
-        while True:
-            try:
-                offer_thread = threading.Thread(target=self.send_broadcast_offers,args=[])
+                offer_thread = threading.Thread(target=self.send_offers, args=[])
                 offer_thread.start()
-                # accept_thread = threading.Thread(target=self.listen_to_clients, args=[])
-                # accept_thread.start()
-                self.listen_to_clients()
-                offer_thread.join()
-                # accept_thread.join()
-
+                self.start_listen()
                 self.clear()
+                offer_thread.join()
             except Exception as e:
                 print(str(e))
-                time.sleep(1)
+
+    def start_listen(self):
+        print(f"Server started, listening on IP address ")
+
+        conn1, addr1, conn2, addr2 = None, None, None, None
+        server_sock = socket(AF_INET, SOCK_STREAM)
+        server_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        server_sock.bind(('', self.server_port))
+
+        server_sock.listen(2)
+        connected = False
+        while not connected:
+            if self.connected == 0:
+                conn1, addr1 = server_sock.accept()
+                self.connected = self.connected + 1
                 pass
+            elif self.connected == 1:
+                conn2, addr2 = server_sock.accept()
+                self.connected = self.connected + 1
+                connected = True
+
+        name1 = conn1.recv(self.buff).decode()
+        name2 = conn2.recv(self.buff).decode()
+
+        time.sleep(10)
+        msg = f"Welcome to our game  \nplayer 1: {name1} \nplayer 2: {name2} \nthe question is: {self.questions[0]}"
+        msg = msg.encode()
+        conn1.send(msg)
+        conn2.send(msg)
+
+        lst, _, _ = select([conn1, conn2], [], [], 10)
+
+        if(len(lst)==0):
+            msg=f"time out, draw! the solution is {self.answers[0]}"
+        elif lst[0]==conn1:
+            sol = conn1.recv(self.buff).decode()
+            if sol == str(self.answers[0]):
+                msg = f"the winner is {name1}"
+            else:
+                msg = f"the winner is {name2}"
+        else:
+            sol = conn2.recv(self.buff).decode()
+            if sol == str(self.answers[0]):
+                msg = f"the winner is {name2}"
+            else:
+                msg = f"the winner is {name1}"
+        msg = msg.encode()
+        conn1.send(msg)
+        conn2.send(msg)
+
+
+    def send_offers(self):
+        broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+        broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        broadcast_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR,1)
+        for i in range(10):
+            if self.connected == 2:
+                break
+            else:
+                offer = struct.pack("!IBH", 0xabcddcba, 0x2, self.server_port)
+                broadcast_sock.sendto(offer, ("<broadcast>", self.broadcast_port))
+                time.sleep(1)
+
+    def playtime(self, conn, addr, number):
+        name = conn.recv(self.buff).decode()
 
     def clear(self):
-        self.winner = ""
-        self.threads_name = {}
-        self.threads = []
-        self.thread_cnt = 0
+        self.connected = 0
+        self.thread1_name = ""
+        self.thread2_name = ""
 
 
 if __name__ == '__main__':
     s = server()
-    s.start()
+    s.run()

@@ -1,143 +1,114 @@
 from socket import *
 import struct
 import time
-import scapy
+import sys
+from select import select
+# import scapy
 
-class client:
 
-    def __init__(self, name):
-        self.b_s = socket(AF_INET, SOCK_DGRAM)
-        self.test = "eth2"
-        self.dev = "eth1"
-        # self.ip = scapy.get_if_addr(self.dev)
-        self.ip = "132.73.199.2"
-        self.client_name = name
-        self.client_sol = ''
+class Client:
+
+    def __init__(self, name="Illuminati"):
         self.broadcast_port = 13117
-        self.packet_len = 8
-        self.max_len = 2048
+        # self.client_ip = "132.73.199.2"
+        # self.client_ip_test = scapy.get_if_addr("eth2")
+        # self.client_ip_dev = scapy.get_if_addr("eth1")
+        self.pack_len = 7
+        self.server_port = 0
         self.server_ip = 0
-        self.tcp_port = 0
+        self.buff = 1024
+        self.name = name
 
-    def begin_game(self):
+    def run(self):
         while True:
             try:
-                self.get_TCP_socket()
-                self.open_TCP()
+                print(f"Client started, listening for offer requests...")
+                self.receive_game_port()
+                self.create_tcp_sock()
+                self.clear()
             except Exception as e:
+                print(1)
                 print(str(e))
+                time.sleep(1)
+
+    def receive_game_port(self):
+        # creating new broadcast socket
+        broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+        broadcast_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        try:
+            # binding to broadcast to receive packets
+            broadcast_sock.bind(('', self.broadcast_port))
+        except Exception as e:
+            print(2)
+            print(str(e))
+        # receive offer packet
+        msg=None
+        pkt, addr = broadcast_sock.recvfrom(self.buff)
+        if len(pkt) == self.pack_len:
+            try:
+                print(f"client received a packet from ip: {str(addr[0])}")
+                msg = struct.unpack("!IBH", pkt)
+            except Exception as e:
+                print(3)
+                print(str(e))
+            if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
+                print(f"client received a good offer")
+                self.server_port = msg[2]
+                self.server_ip = addr[0]
+                print(f"server ip is: {self.server_ip}, server port is: {self.server_port}")
+            else:
+                print(f"client received a bad offer, keep listening")
+
+    def create_tcp_sock(self):
+        tcp_sock = socket(AF_INET, SOCK_STREAM)
+        tcp_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        connected = False
+
+        while not connected:
+            try:
+                tcp_sock.connect((self.server_ip, self.server_port))
+                connected = True
+            except Exception as e:
+                print(4)
+                # print(str(e))
                 time.sleep(1)
                 pass
 
-    def get_TCP_socket(self):
-        # try:
-        #     b_s = socket(AF_INET, SOCK_DGRAM)
-        # except:
-        #     print(f"{bcolors.FAIL}error - could not listen to broadcast port: {str(self.broadcast_port)}{bcolors.ENDC}")
-
-        print(f"{bcolors.OKGREEN}client currently listening to port: {str(self.broadcast_port)}{bcolors.ENDC}")
-        # b_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        while True:
-            try:
-                self.b_s.bind((self.ip,self.broadcast_port))
-            except:
-                print(
-                    f"{bcolors.FAIL}error - could not listen to broadcast port: {str(self.broadcast_port)}{bcolors.ENDC}")
-            print(f"client listening to {self.broadcast_port}")
-            pkt, address = self.b_s.recvfrom(self.max_len)
-            if len(pkt) == self.packet_len:
-                try:
-                    print(f"{bcolors.OKGREEN}client received a packet from ip: {str(address[0])}{bcolors.ENDC}")
-                    msg = struct.unpack("Ibh", pkt)
-                except:
-                    print(f"{bcolors.FAIL}error - could not unpack a server offer{bcolors.ENDC}")
-                    time.sleep(1)
-                else:
-                    if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
-                        print(f"{bcolors.OKGREEN}client received a good offer{bcolors.ENDC}")
-                        self.tcp_port = msg[2]
-                        self.server_ip = address[0]
-                        return
-                    print(f"{bcolors.OKGREEN}client received a bad offer, keep listening {bcolors.ENDC}")
-
-
-    def open_TCP(self):
-        c_s = socket(AF_INET, SOCK_STREAM)
-        # while True:
-        #     try:
-        #         c_s = socket(AF_INET, SOCK_STREAM)
-        #         break
-        #     except:
-        #         print(
-        #             f"{bcolors.FAIL}error1 - could not creat tcp socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)} {bcolors.ENDC}")
-        c_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        conn_flag = False
-        while not conn_flag:
-            try:
-                print(" before going to sent name")
-                c_s.connect((self.server_ip, self.tcp_port))
-                print("after")
-                conn_flag = True
-            except:
-                print(
-                    f"{bcolors.FAIL}error2 - could not connect socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
-                # shutdown the connection for read \ write
-        print(f"{bcolors.OKGREEN}client and server are connected via TCP socket{bcolors.ENDC}")
-        encoded_name = str.encode(self.client_name + "\n")
-        while True:
-            try:
-                c_s.send(encoded_name)
-
-                break
-            except:
-                print(
-                    f"{bcolors.FAIL}error - could not send client-name to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
-
-            print(f"{bcolors.OKGREEN}client sent his name to the server{bcolors.ENDC}")
-            try:
-                question_from_server = c_s.recv(self.max_len)
-            except:
-                print(
-                    f"{bcolors.FAIL}error - could not receive question from server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+        self.send_massage_to_server(tcp_sock, self.name)
+        self.receive_massage_from_server(tcp_sock)
+        print("please type your solution ")
+        lst, _, _ = select([sys.stdin, tcp_sock], [], [],10)
+        if len(lst) > 0:
+            if lst[0] == sys.stdin :
+                ans = (sys.stdin.readline()[:-1]).encode()
+                tcp_sock.send(ans)
             else:
-                print(
-                    f"{bcolors.OKCYAN} received question: {question_from_server.decode()}{bcolors.ENDC}")
-                while True:
-                    self.client_sol = input(
-                        f"{bcolors.OKBLUE}please provide your answer - QUICK! {bcolors.ENDC}")
-                    encoded_sol = str.encode(self.client_sol)
-                    try:
-                        c_s.send(encoded_sol)
-                    except:
-                        print(
-                            f"{bcolors.FAIL}error - could not send solution to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
-                    else:
-                        print(
-                            f"{bcolors.OKGREEN}client sent his solution to the server{bcolors.ENDC}")
-                        try:
-                            server_response = c_s.recv(self.max_len)
-                        except:
-                            print(
-                                f"{bcolors.FAIL}error - could not receive the last message from the server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
-                        else:
-                            print(
-                                f"{bcolors.OKCYAN} received solution from the server: {server_response.decode()}{bcolors.ENDC}")
-                            return
+                self.receive_massage_from_server(tcp_sock)
+        # self.send_massage_to_server(tcp_sock, solution)
+        # self.receive_massage_from_server(tcp_sock)
 
+    def receive_massage_from_server(self, conn):
+        massage = ""
+        try:
+            massage = conn.recv(self.buff).decode()
+        except Exception as e:
+            print(5)
+            print(str(e))
+        print(f"the server sent you: \n {massage}")
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    def send_massage_to_server(self, conn, massage):
+        massage = str.encode(massage)
+        try:
+            conn.send(massage)
+        except Exception as e:
+            print(6)
+            print(str(e))
 
+    def clear(self):
+        self.server_port = 0
+        self.server_ip = 0
 
 if __name__ == '__main__':
-    name = input(f"{bcolors.OKBLUE}Please enter name: {bcolors.ENDC}")
-    c = client(name)
-    c.begin_game()
+    # name = input("enter name: ")
+    c = Client()
+    c.run()
