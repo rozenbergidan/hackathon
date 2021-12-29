@@ -3,13 +3,17 @@ from threading import Thread
 import time
 from socket import *
 import struct
+import scapy
 from _thread import *
 
 
 class server:
 
     def __init__(self):
-        self.host_ip = '127.0.0.1'
+        self.dev = "eth1"
+        self.test = "eth2"
+        # self.host_ip = scapy.get_if_addr(self.dev)
+        self.host_ip = "132.73.199.2"
         self.game_port = 2000
         self.broadcast_port = 13117
         self.question = {"2 + 2": 4,
@@ -27,25 +31,25 @@ class server:
             s_s = socket(AF_INET, SOCK_DGRAM)
         except:
             print("error - could not create udp socket")
-        else:
-            with s_s:
-                s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-                s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-                for i in range(10):
-                    print(f"server sending offers for {i + 1} sec")
-                    offer = struct.pack("Ibh", 0xabcddcba, 0x2, self.game_port)
-                    s_s.sendto(offer, ('<broadcast>', self.broadcast_port))
-                    time.sleep(1)
+        s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        for i in range(10):
+            print(f"server sending offers for {i + 1} sec")
+            offer = struct.pack("Ibh", 0xabcddcba, 0x2, self.game_port)
+            # print(f"server sending to port {self.broadcast_port}")
+            s_s.sendto(offer, ('255.255.255.255', self.broadcast_port))
+            time.sleep(1)
 
     def listen_to_clients(self):
         print(f"server started, listening on IP address {self.host_ip}")
         s_s = socket(AF_INET, SOCK_STREAM)
-        s_s.setblocking(True)
-        s_s.bind(('', self.game_port))
-        s_s.listen()
+        s_s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        s_s.bind((self.host_ip, self.game_port))
+        s_s.listen(2)
         while True:
             try:
                 c_s, address = s_s.accept()
+                print("catch")
             except:
                 print("error")
             else:
@@ -103,8 +107,14 @@ class server:
     def start(self):
         while True:
             try:
-                self.send_broadcast_offers()
+                offer_thread = threading.Thread(target=self.send_broadcast_offers,args=[])
+                offer_thread.start()
+                # accept_thread = threading.Thread(target=self.listen_to_clients, args=[])
+                # accept_thread.start()
                 self.listen_to_clients()
+                offer_thread.join()
+                # accept_thread.join()
+
                 self.clear()
             except Exception as e:
                 print(str(e))
