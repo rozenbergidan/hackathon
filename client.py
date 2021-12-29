@@ -7,7 +7,7 @@ class client:
 
     def __init__(self, name):
         self.client_name = name
-        self.client_port = 3000
+        # self.client_port = 3000
         self.client_sol = ''
         self.broadcast_port = 13117
         self.packet_len = 7
@@ -32,16 +32,17 @@ class client:
         else:
             with b_s:
                 print(f"{bcolors.OKGREEN}client currently listening to port: {str(self.broadcast_port)}{bcolors.ENDC}")
-                b_s.setsockopt(SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                b_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 while True:
                     b_s.bind(('', self.broadcast_port))
-                    pkt, address = b_s.recv(self.max_len)
+                    pkt, address = b_s.recvfrom(self.max_len)
                     if len(pkt) == self.packet_len:
                         try:
                             print(f"{bcolors.OKGREEN}client received a packet from ip: {str(address[0])}{bcolors.ENDC}")
                             msg = struct.unpack("IBH", pkt)
                         except:
                             print(f"{bcolors.FAIL}error - could not unpack a server offer{bcolors.ENDC}")
+                            time.sleep(1)
                         else:
                             if int(msg[0]) == 0xabcddcba and int(msg[1]) == 0x2:
                                 print(f"{bcolors.OKGREEN}client received a good offer{bcolors.ENDC}")

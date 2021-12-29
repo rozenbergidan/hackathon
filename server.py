@@ -10,7 +10,7 @@ class server:
 
     def __init__(self):
         self.host_ip = '127.0.0.1'
-        self.game_port = 2070
+        self.game_port = 3001
         self.broadcast_port = 13117
         self.question = {"2 + 2": 4,
                          "10 - 6*2 + 4": 2,
@@ -32,7 +32,7 @@ class server:
                 s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 for i in range(10):
                     print(f"server sending offers for {i + 1} sec")
-                    offer = struct.pack("IBH", 0xabcddcba, 0x2, self.game_port.to_bytes(2, byteorder="little"))
+                    offer = struct.pack("IBH", 0xabcddcba, 0x2, self.game_port)
                     s_s.sendto(offer, ('<broadcast>', self.broadcast_port))
                     time.sleep(1)
                 print(f"server started, listening on IP address {self.host_ip}")
@@ -45,6 +45,7 @@ class server:
         while True:
             try:
                 c_s, address = s_s.accept()
+                print("hello there")
             except:
                 print("error")
             else:
@@ -98,3 +99,25 @@ class server:
             msg = str.encode(msg)
             conn.sendto(msg)
             return
+
+    def start(self):
+        while True:
+            try:
+                self.send_broadcast_offers()
+                self.listen_to_clients()
+                self.clear()
+            except:
+                time.sleep(1)
+                pass
+
+    def clear(self):
+        self.winner = ""
+        self.threads_name = {}
+        self.threads = []
+        self.thread_cnt = 0
+
+
+
+if __name__ == '__main__':
+    s = server()
+    s.start()
