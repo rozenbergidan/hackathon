@@ -40,6 +40,7 @@ class Client:
             print(2)
             print(str(e))
         # receive offer packet
+        msg=None
         pkt, addr = broadcast_sock.recvfrom(self.buff)
         if len(pkt) == self.pack_len:
             try:

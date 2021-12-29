@@ -79,7 +79,7 @@ class server:
             if sol == str(self.qeustions.values()[0]):
                 msg = f"the winner is {name2}"
             else:
-                msg = f"the winner is {name2}"
+                msg = f"the winner is {name1}"
         msg = msg.encode()
         conn1.send(msg)
         conn2.send(msg)
