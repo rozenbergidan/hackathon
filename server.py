@@ -5,6 +5,7 @@ from socket import *
 import struct
 from _thread import *
 
+
 class server:
 
     def __init__(self):
@@ -16,8 +17,8 @@ class server:
                          "10*100/100 + 1 - 7": 4
                          }
         self.buff = 1024
-        self.thread_cnt=0
-        self.threads=[]
+        self.thread_cnt = 0
+        self.threads = []
         self.threads_name = {}
         self.winner = ""
 
@@ -30,16 +31,16 @@ class server:
             with s_s:
                 s_s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 for i in range(10):
-                    print(f"server sending offers for {i+1} sec")
-                    offer = struct.pack("IBH", 0xabcddcba, 0x2, self.game_port)
-                    s_s.sendto(offer, ('<broadcast>',self.broadcast_port))
+                    print(f"server sending offers for {i + 1} sec")
+                    offer = struct.pack("IBH", 0xabcddcba, 0x2, self.game_port.to_bytes(2, byteorder="little"))
+                    s_s.sendto(offer, ('<broadcast>', self.broadcast_port))
                     time.sleep(1)
                 print(f"server started, listening on IP address {self.host_ip}")
 
     def listen_to_clients(self):
         s_s = socket(AF_INET, SOCK_STREAM)
         s_s.setblocking(True)
-        s_s.bind(('',self.game_port))
+        s_s.bind(('', self.game_port))
         s_s.listen(2)
         while True:
             try:
@@ -54,7 +55,6 @@ class server:
                 print(f"Thread Number: {str(self.thread_cnt)}")
                 self.threads.append(a_thread)
                 a_thread.start()
-
 
     def accept_client(self, conn):
         msg = conn.recv(self.buff)
@@ -98,10 +98,3 @@ class server:
             msg = str.encode(msg)
             conn.sendto(msg)
             return
-
-
-
-
-
-
-

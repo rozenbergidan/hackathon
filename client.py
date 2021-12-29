@@ -2,6 +2,7 @@ from socket import *
 import struct
 import time
 
+
 class client:
 
     def __init__(self, name):
@@ -13,7 +14,6 @@ class client:
         self.max_len = 1024
         self.server_ip = 0
         self.tcp_port = 0
-
 
     def begin_game(self):
         while True:
@@ -55,7 +55,8 @@ class client:
             try:
                 c_s = socket(AF_INET, SOCK_STREAM)
             except:
-                print(f"{bcolors.FAIL}error - could not creat tcp socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)} {bcolors.ENDC}")
+                print(
+                    f"{bcolors.FAIL}error - could not creat tcp socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)} {bcolors.ENDC}")
             else:
                 with c_s:
                     conn_flag = False
@@ -63,7 +64,8 @@ class client:
                         try:
                             c_s.connect((self.server_ip, self.tcp_port))
                         except:
-                            print(f"{bcolors.FAIL}error - could not connect socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+                            print(
+                                f"{bcolors.FAIL}error - could not connect socket with server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                             # shutdown the connection for read \ write
                             c_s.shutdown(SHUT_RDWR)
                         else:
@@ -73,32 +75,39 @@ class client:
                                 try:
                                     c_s.send(encoded_name)
                                 except:
-                                    print(f"{bcolors.FAIL}error - could not send client-name to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+                                    print(
+                                        f"{bcolors.FAIL}error - could not send client-name to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                 else:
                                     print(f"{bcolors.OKGREEN}client sent his name to the server{bcolors.ENDC}")
                                     try:
                                         question_from_server = c_s.recv(self.max_len)
                                     except:
-                                        print(f"{bcolors.FAIL}error - could not receive question from server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+                                        print(
+                                            f"{bcolors.FAIL}error - could not receive question from server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                     else:
-                                        print(f"{bcolors.OKCYAN} received question: {question_from_server.decode()}{bcolors.ENDC}")
+                                        print(
+                                            f"{bcolors.OKCYAN} received question: {question_from_server.decode()}{bcolors.ENDC}")
                                         while True:
-                                            self.client_sol = input(f"{bcolors.OKBLUE}please provide your answer - QUICK! {bcolors.ENDC}")
+                                            self.client_sol = input(
+                                                f"{bcolors.OKBLUE}please provide your answer - QUICK! {bcolors.ENDC}")
                                             encoded_sol = str.encode(self.client_sol)
                                             try:
                                                 c_s.send(encoded_sol)
                                             except:
-                                                print(f"{bcolors.FAIL}error - could not send solution to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+                                                print(
+                                                    f"{bcolors.FAIL}error - could not send solution to server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                             else:
-                                                print(f"{bcolors.OKGREEN}client sent his solution to the server{bcolors.ENDC}")
+                                                print(
+                                                    f"{bcolors.OKGREEN}client sent his solution to the server{bcolors.ENDC}")
                                                 try:
                                                     server_response = c_s.recv(self.max_len)
                                                 except:
-                                                    print(f"{bcolors.FAIL}error - could not receive the last message from the server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
+                                                    print(
+                                                        f"{bcolors.FAIL}error - could not receive the last message from the server: {str(self.server_ip)} in port: {str(self.tcp_port)}{bcolors.ENDC}")
                                                 else:
-                                                    print(f"{bcolors.OKCYAN} received solution from the server: {server_response.decode()}{bcolors.ENDC}")
+                                                    print(
+                                                        f"{bcolors.OKCYAN} received solution from the server: {server_response.decode()}{bcolors.ENDC}")
                                                     return
-
 
 
 class bcolors:
@@ -111,6 +120,7 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
 
 if __name__ == '__main__':
     name = input(f"{bcolors.OKBLUE}Please enter name: {bcolors.ENDC}")
