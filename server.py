@@ -3,12 +3,10 @@ from threading import Thread
 import time
 from socket import *
 import struct
-import scapy
-from _thread import *
+
 
 
 class server:
-
     def __init__(self):
         self.dev = "eth1"
         self.test = "eth2"
