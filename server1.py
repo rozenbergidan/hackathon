@@ -1,4 +1,5 @@
 import threading
+from select import select
 
 import scapy
 import time
@@ -22,21 +23,23 @@ class server:
         self.connected = 0
         self.thread1_name = ""
         self.thread2_name = ""
-        self.welcome_msg = msg = f"Welcome to our game \n player 1: {self.thread1_name} \n player 2: {self.thread2_name} \n the question is: {self.qeustions.keys()[0]}"
 
     def run(self):
-        try:
-            offer_thread = threading.Thread(target=self.send_offers, args=[])
-            offer_thread.start()
-            self.start_listen()
-            self.clear()
-        except Exception as e:
-            print(str(e))
+        while True:
+            try:
+                offer_thread = threading.Thread(target=self.send_offers, args=[])
+                offer_thread.start()
+                self.start_listen()
+                self.clear()
+                offer_thread.join()
+            except Exception as e:
+                print(str(e))
 
     def start_listen(self):
         print(f"Server started, listening on IP address {self.server_ip}")
 
-        server_sock = socket(AF_INET, SOCK_DGRAM)
+        conn1, addr1, conn2, addr2 = None, None, None, None
+        server_sock = socket(AF_INET, SOCK_STREAM)
         server_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         server_sock.bind((self.server_ip, self.server_port))
 
@@ -52,16 +55,35 @@ class server:
                 self.connected = self.connected + 1
                 connected = True
 
-        p1_thread = threading.Thread(target=self.playtime, args=[conn1, addr1, 1])
-        p2_thread = threading.Thread(target=self.playtime, args=[conn2, addr2, 2])
+        name1 = conn1.recv(self.buff).decode()
+        name2 = conn2.recv(self.buff).decode()
 
-        p1_thread.start()
-        p2_thread.start()
+        time.sleep(10)
+        msg = f"Welcome to our game \n player 1: {name1} \n player 2: {name2} \n the question is: {self.qeustions.keys()[0]}"
+        msg = msg.encode()
+        conn1.send(msg)
+        conn2.send(msg)
 
-        self.start_game()
+        lst, _, _ = select([conn1, conn2], [], [], 10)
 
-        p1_thread.join()
-        p2_thread.join()
+        if(len(lst)==0):
+            msg=f"time out, draw! the solution is {self.qeustions.values()[0]}"
+        elif lst[0]==conn1:
+            sol = conn1.recv(self.buff).decode()
+            if sol == str(self.qeustions.values()[0]):
+                msg = f"the winner is {name1}"
+            else:
+                msg = f"the winner is {name2}"
+        else:
+            sol = conn2.recv(self.buff).decode()
+            if sol == str(self.qeustions.values()[0]):
+                msg = f"the winner is {name2}"
+            else:
+                msg = f"the winner is {name2}"
+        msg = msg.encode()
+        conn1.send(msg)
+        conn2.send(msg)
+
 
     def send_offers(self):
         broadcast_sock = socket(AF_INET, SOCK_DGRAM)
@@ -70,14 +92,17 @@ class server:
             if self.connected == 2:
                 pass
             else:
-                offer = (0xabcddcba).to_bytes(4, "little") + (0x2).to_bytes(1, "little") + (
-                    self.server_port).to_bytes(2, "little")
+                offer = struct.pack("!IBH", 0xabcddcba, 0x2, self.server_port)
                 broadcast_sock.sendto(offer, ("255.255.255.255", self.server_port))
                 time.sleep(1)
 
     def playtime(self, conn, addr, number):
-        name = conn.recv(self.buff)
-        name = name.decode()
+        name = conn.recv(self.buff).decode()
+
+    def clear(self):
+        self.connected = 0
+        self.thread1_name = ""
+        self.thread2_name = ""
 
 
 if __name__ == '__main__':

@@ -1,14 +1,14 @@
 from socket import *
 import struct
 import time
-import scapy
+# import scapy
 
 
 class Client:
 
     def __init__(self, name="Illuminati"):
         self.broadcast_port = 13117
-        self.client_ip = "132.73.199.2"
+        # self.client_ip = "132.73.199.2"
         # self.client_ip_test = scapy.get_if_addr("eth2")
         # self.client_ip_dev = scapy.get_if_addr("eth1")
         self.pack_len = 7
@@ -35,7 +35,7 @@ class Client:
         broadcast_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         try:
             # binding to broadcast to receive packets
-            broadcast_sock.bind((self.client_ip, self.broadcast_port))
+            broadcast_sock.bind(('', self.broadcast_port))
         except Exception as e:
             print(2)
             print(str(e))
@@ -44,7 +44,7 @@ class Client:
         if len(pkt) == self.pack_len:
             try:
                 print(f"client received a packet from ip: {str(addr[0])}")
-                msg = struct.unpack("Ibh", pkt)
+                msg = struct.unpack("!IBH", pkt)
             except Exception as e:
                 print(3)
                 print(str(e))
@@ -78,7 +78,7 @@ class Client:
     def receive_massage_from_server(self, conn):
         massage = ""
         try:
-            massage = conn.recvfrom(self.buff)
+            massage = conn.recv(self.buff).decode()
         except Exception as e:
             print(5)
             print(str(e))
